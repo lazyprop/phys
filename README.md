@@ -6,5 +6,5 @@ second order systems.
 
 
 - [integration basics by gafer on games](https://gafferongames.com/post/integration_basics/)
-
+- https://adamsturge.github.io/Engine-Blog/mydoc_symplectic_euler.html#symplectic-euler
 

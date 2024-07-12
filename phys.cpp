@@ -64,7 +64,6 @@ Vec2 origin(float x, float y) {
   return Vec2(ORIGIN.x + x, ORIGIN.y + y);
 }
 
-
 Vec2 operator*(const double lambda, const Vec2 &v) {
   return Vec2(v.x * lambda, v.y * lambda);
 }
@@ -140,24 +139,27 @@ public:
   }
 
   void step() {
-    std::vector<PointMass> new_obj(objects);
-
-    for (int i = 0; i < objects.size(); i++) {
-      //auto p = &new_obj[i];
-      auto p = &objects[i];
-
-      for (int j = 0; j < objects.size(); j++) {
-        if (i == j) continue;
-        auto q = &objects[j];
-        p->vel += (gravity(*p, *q) / p->mass).discrete();
+    for (auto &p: objects) {
+      p.pos += p.vel.discrete();
+      for (auto &q: objects) {
+        if ((p.pos - q.pos).norm() < 0.1) continue;
+        p.vel += (gravity(p, q) / p.mass).discrete();
       }
-
-      p->pos += p->vel.discrete();
-      //p->vel = collide(p->pos, p->vel);
     }
-
-    //objects = new_obj;
   }
+
+  void verlet_step() {
+    for (auto &p: objects) {
+      for (auto &q: objects) {
+        if ((p.pos - q.pos).norm() < 0.1) continue;
+        Vec2 ai = (gravity(p, q) / p.mass);
+        p.pos += p.vel.discrete() + 0.5 * ai.discrete().discrete();
+        Vec2 af = (gravity(p, q) / p.mass);
+        p.vel += 0.5 * (ai + af).discrete();
+      }
+    }
+  }
+    
 
   void get_energy() {
     double k = 0, u = 0;
@@ -201,8 +203,8 @@ World three_body() {
 
 World star_planet() {
   World world;
-  world.add_object(PointMass(Vec2(900, 450), Vec2(0, 0), 1e5, RED));
-  world.add_object(PointMass(Vec2(500, 450), Vec2(0, 400), 1, BLUE));
+  world.add_object(PointMass(ORIGIN, Vec2(0, 0), 1e5, RED));
+  world.add_object(PointMass(origin(-100, 0), Vec2(0, 100), 5, BLUE));
   return world;
 }
 
@@ -244,7 +246,7 @@ int main() {
 
     EndDrawing();
 
-    world.step();
+    world.verlet_step();
   }
 
   CloseWindow();
