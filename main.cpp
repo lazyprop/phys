@@ -39,9 +39,12 @@ World two_body() {
 
 World three_body() {
   World world;
-  world.add_object(PointMass(Vec2(800, 550), Vec2(-100, 150), 1e4, RED));
-  world.add_object(PointMass(Vec2(1000, 550), Vec2(100, -150), 1e4, BLUE));
-  world.add_object(PointMass(Vec2(900, 450), Vec2(-200, 100), 1e4, GREEN));
+  world.add_object(PointMass(origin(100, 0), Vec2(0, 100), 1e7, RED));
+  world.add_object(PointMass(origin(-50, 50 * sqrt(3)),
+                             Vec2(-sqrt(3) * 50, -50), 1e7, BLUE));
+  world.add_object(PointMass(origin(-50, -50 * sqrt(3)),
+                             Vec2(sqrt(3) * 50, -50), 1e7, GREEN));
+  world.add_binary_force((BinaryForce*) new Gravity(1));
   return world;
 }
 
@@ -51,6 +54,7 @@ World star_planet() {
   World world;
   world.add_object(PointMass(ORIGIN, Vec2(0, 0), 1e5, RED));
   world.add_object(PointMass(origin(-100, 0), Vec2(0, 100), 5, BLUE));
+  world.add_binary_force((BinaryForce*) new Gravity(1));
   return world;
 }
 
@@ -59,6 +63,7 @@ World star_two_planet() {
   world.add_object(PointMass(Vec2(900, 450), Vec2(0, 0), 1e5, RED));
   world.add_object(PointMass(Vec2(500, 450), Vec2(0, 400), 1, BLUE));
   world.add_object(PointMass(Vec2(500, 350), Vec2(0, 400), 1, GREEN));
+  world.add_binary_force((BinaryForce*) new Gravity(1));
   return world;
 }
   
@@ -73,6 +78,7 @@ World star_planet_moon() {
   world.add_object(sun);
   world.add_object(planet);
   world.add_object(moon);
+  world.add_binary_force((BinaryForce*) new Gravity(1));
   return world;
 }
 
@@ -81,7 +87,7 @@ int main() {
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "phys");
   SetTargetFPS(FPS);
 
-  World world = two_body();
+  World world = three_body();
   VerletIntegrator integrator(world, 1.0 / FPS);
 
   while (!WindowShouldClose()) {
