@@ -1,9 +1,12 @@
 #include <raylib.h>
 #include <vector>
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 
 const int FPS = 60;
+const double dt = 1.0 / FPS;
+const double G = 1;
 
 class Vec2 {
 public:
@@ -38,7 +41,8 @@ public:
   }
 
   void print() {
-    std::cout << "(" << x << ", " << y << ")\n" << std::flush;
+    std::cout << std::fixed;
+    std::cout << std::setprecision(4) << "(" << x << ", " << y << ")\n" << std::flush;
   }
 
   Vec2 discrete() {
@@ -57,8 +61,8 @@ public:
   friend Vec2 operator*(const double lambda, const Vec2 &v);
 };
 
-const int screen_width = 1920, screen_height = 1080;
-Vec2 ORIGIN(screen_width / 2, screen_height / 2);
+const int SCREEN_WIDTH = 1920, SCREEN_HEIGHT = 1080;
+Vec2 ORIGIN(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
 
 Vec2 origin(float x, float y) {
   return Vec2(ORIGIN.x + x, ORIGIN.y + y);
@@ -91,10 +95,10 @@ public:
 
 // check for collision. if there is, then return new vel vector
 Vec2 collide(Vec2& pos, Vec2& vel) {
-  if (pos.x > screen_width or pos.x < 0) {
+  if (pos.x > SCREEN_WIDTH or pos.x < 0) {
     return Vec2(-vel.x, vel.y);
   }
-  if (pos.y > screen_height or pos.y < 0) {
+  if (pos.y > SCREEN_HEIGHT or pos.y < 0) {
     return Vec2(vel.x, -vel.y);
   }
   return vel;
@@ -103,7 +107,6 @@ Vec2 collide(Vec2& pos, Vec2& vel) {
 
 // return gravitational force acting on p due to q
 Vec2 gravity(PointMass &p, PointMass &q) {
-  double G = 1;
   double dist = (q.pos - p.pos).norm();
   Vec2 force = (G * p.mass * q.mass * (q.pos - p.pos)) / (dist * dist * dist);
   return force;
@@ -112,7 +115,6 @@ Vec2 gravity(PointMass &p, PointMass &q) {
 
 // return gravitational potential energy of p due to q
 double grav_potential(PointMass &p, PointMass &q) {
-  double G = 1e3;
   double dist = (q.pos - p.pos).norm();
   return (-G * p.mass * q.mass) / dist;
 }
@@ -121,10 +123,10 @@ double grav_potential(PointMass &p, PointMass &q) {
 class World {
   //Vec2 gravity = Vec2(0, 200);
   Vec2 world_gravity = Vec2(0, 100);
-  std::vector<PointMass> objects;
 
 public:
   double energy; // total mechanical energy
+  std::vector<PointMass> objects;
 
   World() : objects{} {}
 
@@ -139,55 +141,108 @@ public:
   }
 
   void step() {
-    for (auto &p: objects) {
-      p.pos += p.vel.discrete();
+    std::vector<PointMass> newobj(objects);
+    for (auto &p: newobj) {
       for (auto &q: objects) {
         if ((p.pos - q.pos).norm() < 0.1) continue;
-        p.vel += (gravity(p, q) / p.mass).discrete();
+        p.vel += (gravity(p, q) / p.mass) * dt;
       }
+      p.pos += p.vel * dt;
     }
+    objects = newobj;
   }
-
-  void verlet_step() {
-    for (auto &p: objects) {
-      for (auto &q: objects) {
-        if ((p.pos - q.pos).norm() < 0.1) continue;
-        Vec2 ai = (gravity(p, q) / p.mass);
-        p.pos += p.vel.discrete() + 0.5 * ai.discrete().discrete();
-        Vec2 af = (gravity(p, q) / p.mass);
-        p.vel += 0.5 * (ai + af).discrete();
-      }
-    }
-  }
-    
 
   void get_energy() {
     double k = 0, u = 0;
-
     for (auto p: objects) {
       k += 0.5 * p.mass * p.vel.norm() * p.vel.norm();
     }
-
-    for (int i = 0; i < objects.size(); i++) {
-      auto p = &objects[i];
-      for (int j = 0; j < objects.size(); j++) {
-        if (i == j) continue;
-        auto q = &objects[j];
-        u += (-gravity(*p, *q)).dot(q->pos - p->pos);
-        //u += grav_potential(*p, *q);
+    for (auto &p: objects) {
+      for (auto &q: objects) {
+        if ((p.pos - q.pos).norm() < 0.1) continue;
+        u += 0.5 * grav_potential(p, q);
       }
     }
 
-    std::cout << "kinetic: " << k << ", potential: " << u
-              << ", total: " << k + u << '\n';
+    std::cout << std::fixed << std::setprecision(5) << k + u << '\n';
   }
 };
 
+class VerletIntegrator {
+  void compute_acc() {
+    aprev = acur;
+    acur.clear();
+    for (auto &p: world.objects) {
+      Vec2 acc(0, 0);
+      for (auto &q: world.objects) {
+        if ((q.pos - p.pos).norm() < 0.1) continue;
+        acc += gravity(p, q) / p.mass;
+      }
+      acur.push_back(acc);
+    }
+  }
+
+  void compute_vel() {
+    std::vector<Vec2> vnew;
+    for (int i = 0; i < vcur.size(); i++) {
+      vnew.push_back(vcur[i] + 0.5 * (aprev[i] + acur[i]) * dt);
+    }
+    vprev = vcur;
+    vcur = vnew;
+  }
+    
+
+  // set world to 'cur' state
+  void update_world() {
+    for (int i = 0; i < xcur.size(); i++) {
+      world.objects[i].pos = xcur[i];
+      world.objects[i].vel = vcur[i];
+    }
+  }
+
+public:
+  World &world;
+  std::vector<Vec2> xprev, vprev, xcur, vcur, aprev, acur;
+  
+  VerletIntegrator(World &world) : world{world} {
+    for (auto &p: world.objects) {
+      xprev.push_back(p.pos);
+      vprev.push_back(p.vel);
+    }
+
+    compute_acc();
+
+    for (int i = 0; i < xprev.size(); i++) {
+      xcur.push_back(xprev[i] + vprev[i] * dt + 0.5 * acur[i]* dt * dt);
+    }
+
+    vcur = vprev;
+    update_world();
+    compute_acc();
+    compute_vel();
+    update_world();
+  }
+
+
+  void step() {
+    std::vector<Vec2> newx;
+    for (int i = 0; i < xprev.size(); i++) {
+      newx.push_back(2 * xcur[i] - xprev[i] + acur[i] * dt * dt);
+    }
+
+    xprev = xcur;
+    xcur = newx;
+    update_world();
+    compute_acc();
+    compute_vel();
+    update_world();
+  }
+};
 
 World two_body() {
   World world;
-  world.add_object(PointMass(origin(-200, 0), Vec2(0, 0), 1e7, RED));
-  world.add_object(PointMass(origin(200, 0), Vec2(0, 0), 1e7, BLUE));
+  world.add_object(PointMass(origin(-200, 0), Vec2(0, 50), 1e7, RED));
+  world.add_object(PointMass(origin(200, 0), Vec2(0, -50), 1e7, BLUE));
   return world;
 }
 
@@ -232,10 +287,11 @@ World star_planet_moon() {
 
 
 int main() {
-  InitWindow(screen_width, screen_height, "phys");
+  InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "phys");
   SetTargetFPS(FPS);
 
   World world = two_body();
+  VerletIntegrator integrator(world);
 
   while (!WindowShouldClose()) {
     world.get_energy();
@@ -246,7 +302,7 @@ int main() {
 
     EndDrawing();
 
-    world.verlet_step();
+    integrator.step();
   }
 
   CloseWindow();
