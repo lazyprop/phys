@@ -56,6 +56,7 @@ public:
   }
 };
 
+
 class World {
   //Vec2 gravity = Vec2(0, 200);
   Vec2 world_gravity = Vec2(0, 100);
@@ -87,8 +88,11 @@ public:
       k += 0.5 * p.mass * p.vel.norm() * p.vel.norm();
     }
     for (auto f: binary_forces) {
-      for (auto &p: objects) {
-        for (auto &q: objects) {
+      for (int i = 0; i < objects.size(); i++) {
+        auto &p = objects[i];
+        for (int j = 0; j < objects.size(); j++) {
+          if (i == j) continue;
+          auto &q = objects[j];
           u += 0.5 * f->potential_energy(p, q);
         }
       }

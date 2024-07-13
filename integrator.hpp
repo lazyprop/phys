@@ -11,10 +11,12 @@ class VerletIntegrator {
     aprev = acur;
     acur.clear();
     for (auto f: world.binary_forces) {
-      for (auto &p: world.objects) {
+      for (int i = 0; i < world.objects.size(); i++) {
+        auto &p = world.objects[i];
         Vec2 acc(0, 0);
-        for (auto &q: world.objects) {
-          if ((q.pos - p.pos).norm() < 0.1) continue;
+        for (int j = 0; j < world.objects.size(); j++) {
+          if (i == j) continue;
+          auto &q = world.objects[j];
           acc += f->force(p, q) / p.mass;
         }
         acur.push_back(acc);

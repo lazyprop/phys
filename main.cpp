@@ -9,7 +9,7 @@
 #include "world.hpp"
 
 const int FPS = 60;
-const int ITERATIONS_PER_FRAME = 100;
+const int ITERATIONS_PER_FRAME = 300;
 
 const int SCREEN_WIDTH = 1920, SCREEN_HEIGHT = 1080;
 Vec2 ORIGIN(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
