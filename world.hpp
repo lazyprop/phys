@@ -45,11 +45,13 @@ public:
   
   virtual Vec2 force(PointMass &p, PointMass &q) const {
     double dist = (q.pos - p.pos).norm();
+    if (dist < 1e-12) return Vec2(0, 0);
     return (G * p.mass * q.mass * (q.pos - p.pos)) / (dist * dist * dist);
   }
 
   virtual double potential_energy(PointMass &p, PointMass &q) const {
     double dist = (q.pos - p.pos).norm();
+    if (dist < 1e-12) return 0;
     return (-G * p.mass * q.mass) / dist;
   }
 };
@@ -87,7 +89,6 @@ public:
     for (auto f: binary_forces) {
       for (auto &p: objects) {
         for (auto &q: objects) {
-          if ((p.pos - q.pos).norm() < 0.1) continue;
           u += 0.5 * f->potential_energy(p, q);
         }
       }

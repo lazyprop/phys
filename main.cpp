@@ -9,6 +9,7 @@
 #include "world.hpp"
 
 const int FPS = 60;
+const int ITERATIONS_PER_FRAME = 100;
 
 const int SCREEN_WIDTH = 1920, SCREEN_HEIGHT = 1080;
 Vec2 ORIGIN(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
@@ -88,10 +89,11 @@ int main() {
   SetTargetFPS(FPS);
 
   World world = three_body();
-  VerletIntegrator integrator(world, 1.0 / FPS);
+  VerletIntegrator integrator(world, 0.0001);
 
   while (!WindowShouldClose()) {
     world.compute_energy();
+    std::cout << std::fixed << std::setprecision(4) << world.energy << '\n';
     BeginDrawing();
 
     ClearBackground(BLACK);
@@ -99,7 +101,9 @@ int main() {
 
     EndDrawing();
 
-    integrator.step();
+    for (int i = 0; i < ITERATIONS_PER_FRAME; i++) {
+      integrator.step();
+    }
   }
 
   CloseWindow();
